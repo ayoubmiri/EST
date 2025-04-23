@@ -3,82 +3,93 @@ import { taskService } from './services/api';
 import './App.css';
 
 function App() {
-  const [tâches, setTâches] = useState([]);
-  const [nouvelleTâche, setNouvelleTâche] = useState('');
-  const [éditionId, setÉditionId] = useState(null);
-  const [texteÉdition, setTexteÉdition] = useState('');
-  const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
+  const [tasks, setTasks] = useState([]);
+  const [newTask, setNewTask] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
+  // Charger les tâches au montage
   useEffect(() => {
-    const chargerTâches = async () => {
+    const loadTasks = async () => {
       try {
-        const données = await taskService.getAllTasks();
-        setTâches(données);
+        const data = await taskService.getAllTasks();
+        setTasks(data);
       } catch (err) {
-        setErreur('Échec du chargement des tâches. Veuillez rafraîchir la page.');
+        setError('Échec du chargement des tâches');
         console.error(err);
       } finally {
-        setChargement(false);
+        setLoading(false);
       }
     };
-    
-    chargerTâches();
+    loadTasks();
   }, []);
 
-  const ajouterTâche = async () => {
-    if (!nouvelleTâche.trim()) return;
-    
+  // Ajouter une tâche
+  const addTask = async () => {
+    if (!newTask.trim()) {
+      setError('Veuillez saisir une tâche');
+      return;
+    }
+
     try {
-      const tâche = await taskService.createTask({ title: nouvelleTâche });
-      setTâches([...tâches, tâche]);
-      setNouvelleTâche('');
-      setErreur('');
+      const task = await taskService.createTask({ title: newTask });
+      setTasks([...tasks, task]);
+      setNewTask('');
+      setError('');
     } catch (err) {
-      setErreur('Échec de l\'ajout. Veuillez réessayer.');
+      setError('Échec de l\'ajout de la tâche');
       console.error(err);
     }
   };
 
-  const basculerTerminée = async (tâche) => {
+  // Modifier une tâche
+  const updateTask = async (id) => {
+    if (!editText.trim()) {
+      setError('Le titre ne peut pas être vide');
+      return;
+    }
+
     try {
-      const tâcheMiseÀJour = await taskService.updateTask(tâche.id, {
-        ...tâche,
-        completed: !tâche.completed
+      const taskToUpdate = tasks.find(t => t.id === id);
+      const updatedTask = await taskService.updateTask(id, {
+        ...taskToUpdate,
+        title: editText
       });
-      setTâches(tâches.map(t => t.id === tâche.id ? tâcheMiseÀJour : t));
+      
+      setTasks(tasks.map(t => 
+        t.id === id ? updatedTask : t
+      ));
+      setEditingId(null);
+      setError('');
     } catch (err) {
-      setErreur('Échec de la mise à jour.');
+      setError('Échec de la modification');
       console.error(err);
     }
   };
 
-  const démarrerÉdition = (tâche) => {
-    setÉditionId(tâche.id);
-    setTexteÉdition(tâche.title);
-  };
-
-  const sauvegarderÉdition = async (id) => {
-    try {
-      const tâcheMiseÀJour = await taskService.updateTask(id, {
-        title: texteÉdition,
-        completed: tâches.find(t => t.id === id).completed
-      });
-      setTâches(tâches.map(t => t.id === id ? tâcheMiseÀJour : t));
-      setÉditionId(null);
-    } catch (err) {
-      setErreur('Échec de la mise à jour.');
-      console.error(err);
-    }
-  };
-
-  const supprimerTâche = async (id) => {
+  // Supprimer une tâche
+  const deleteTask = async (id) => {
     try {
       await taskService.deleteTask(id);
-      setTâches(tâches.filter(tâche => tâche.id !== id));
+      setTasks(tasks.filter(task => task.id !== id));
     } catch (err) {
-      setErreur('Échec de la suppression.');
+      setError('Échec de la suppression');
       console.error(err);
+    }
+  };
+
+  // Basculer l'état complété
+  const toggleComplete = async (task) => {
+    try {
+      const updatedTask = await taskService.updateTask(task.id, {
+        ...task,
+        completed: !task.completed
+      });
+      setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
+    } catch (err) {
+      console.error('Échec du changement d\'état:', err);
     }
   };
 
@@ -89,79 +100,88 @@ function App() {
         <p>Organisez votre travail efficacement</p>
       </header>
 
-      {erreur && <div className="error-message">{erreur}</div>}
+      {error && <div className="error-message">{error}</div>}
 
       <div className="task-form">
         <input
           type="text"
           className="task-input"
-          value={nouvelleTâche}
-          onChange={(e) => setNouvelleTâche(e.target.value)}
+          value={newTask}
+          onChange={(e) => setNewTask(e.target.value)}
           placeholder="Saisir une nouvelle tâche..."
-          onKeyPress={(e) => e.key === 'Enter' && ajouterTâche()}
+          onKeyPress={(e) => e.key === 'Enter' && addTask()}
         />
-        <button className="add-btn" onClick={ajouterTâche}>
+        <button className="add-btn" onClick={addTask}>
           Ajouter
         </button>
       </div>
 
-      {chargement ? (
+      {loading ? (
         <div className="loader">
           <div className="spinner"></div>
         </div>
       ) : (
         <ul className="task-list">
-          {tâches.map(tâche => (
-            <li key={tâche.id} className={`task-item ${tâche.completed ? 'completed' : ''}`}>
-              <input
-                type="checkbox"
-                className="task-checkbox"
-                checked={tâche.completed}
-                onChange={() => basculerTerminée(tâche)}
-              />
-              
-              <div className="task-content">
-                {éditionId === tâche.id ? (
-                  <input
-                    type="text"
-                    className="edit-input"
-                    value={texteÉdition}
-                    onChange={(e) => setTexteÉdition(e.target.value)}
-                    onBlur={() => sauvegarderÉdition(tâche.id)}
-                    onKeyPress={(e) => e.key === 'Enter' && sauvegarderÉdition(tâche.id)}
-                    autoFocus
-                  />
-                ) : (
-                  <span className="task-title" onDoubleClick={() => démarrerÉdition(tâche)}>
-                    {tâche.title}
-                  </span>
-                )}
-              </div>
+          {tasks.length === 0 ? (
+            <div className="empty-state">
+              <p>Aucune tâche pour le moment</p>
+              <small>Commencez par ajouter votre première tâche</small>
+            </div>
+          ) : (
+            tasks.map(task => (
+              <li key={task.id} className={`task-item ${task.completed ? 'completed' : ''}`}>
+                <input
+                  type="checkbox"
+                  className="task-checkbox"
+                  checked={task.completed}
+                  onChange={() => toggleComplete(task)}
+                />
+                
+                <div className="task-content">
+                  {editingId === task.id ? (
+                    <input
+                      type="text"
+                      className="edit-input"
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onBlur={() => updateTask(task.id)}
+                      onKeyPress={(e) => e.key === 'Enter' && updateTask(task.id)}
+                      autoFocus
+                    />
+                  ) : (
+                    <span 
+                      className="task-title" 
+                      onDoubleClick={() => {
+                        setEditingId(task.id);
+                        setEditText(task.title);
+                      }}
+                    >
+                      {task.title}
+                    </span>
+                  )}
+                </div>
 
-              <div className="task-actions">
-                <button 
-                  className="action-btn edit-btn"
-                  onClick={() => éditionId === tâche.id ? sauvegarderÉdition(tâche.id) : démarrerÉdition(tâche)}
-                >
-                  {éditionId === tâche.id ? 'Valider' : 'Modifier'}
-                </button>
-                <button 
-                  className="action-btn delete-btn"
-                  onClick={() => supprimerTâche(tâche.id)}
-                >
-                  Supprimer
-                </button>
-              </div>
-            </li>
-          ))}
+                <div className="task-actions">
+                  <button 
+                    className="action-btn edit-btn"
+                    onClick={() => editingId === task.id ? updateTask(task.id) : (() => {
+                      setEditingId(task.id);
+                      setEditText(task.title);
+                    })()}
+                  >
+                    {editingId === task.id ? 'Valider' : 'Modifier'}
+                  </button>
+                  <button 
+                    className="action-btn delete-btn"
+                    onClick={() => deleteTask(task.id)}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </li>
+            ))
+          )}
         </ul>
-      )}
-
-      {!chargement && tâches.length === 0 && (
-        <div className="empty-state">
-          <p>Aucune tâche pour le moment</p>
-          <small>Commencez par ajouter votre première tâche</small>
-        </div>
       )}
     </div>
   );

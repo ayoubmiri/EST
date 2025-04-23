@@ -1,3 +1,4 @@
+/* Styles globaux */
 :root {
   --primary: #4361ee;
   --primary-dark: #3a0ca3;
@@ -23,6 +24,7 @@ body {
   line-height: 1.6;
 }
 
+/* Structure principale */
 .app-container {
   max-width: 800px;
   margin: 2rem auto;
@@ -176,7 +178,7 @@ body {
   font-size: 1.1rem;
 }
 
-/* Messages d'erreur */
+/* Messages */
 .error-message {
   padding: 1rem;
   margin-bottom: 1.5rem;
@@ -185,6 +187,22 @@ body {
   border-left: 4px solid var(--danger);
   border-radius: 8px;
   font-weight: 500;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--gray);
+}
+
+.empty-state p {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state small {
+  font-size: 0.9rem;
+  opacity: 0.8;
 }
 
 /* Loader */
