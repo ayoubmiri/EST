@@ -1,59 +1,74 @@
 import React, { useState, useEffect } from 'react';
 import { taskService } from '../services/api';
 
-export default function TaskList({ onTaskUpdated }) {
+const TaskList = () => {
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const fetchTasks = async () => {
     try {
       const data = await taskService.getAllTasks();
       setTasks(data);
+      setError('');
     } catch (err) {
-      setError('Erreur lors du chargement des tâches');
+      setError('Failed to load tasks. Please try again.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await taskService.deleteTask(id);
+      setTasks(tasks.filter(task => task.id !== id));
+    } catch (err) {
+      setError('Failed to delete task');
+      console.error(err);
+    }
+  };
+
+  const toggleComplete = async (task) => {
+    try {
+      const updatedTask = await taskService.updateTask(task.id, {
+        ...task,
+        completed: !task.completed
+      });
+      setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
+    } catch (err) {
+      setError('Failed to update task');
+      console.error(err);
     }
   };
 
   useEffect(() => {
     fetchTasks();
-  }, [onTaskUpdated]);
+  }, []);
 
-  const handleDelete = async (id) => {
-    try {
-      await taskService.deleteTask(id);
-      fetchTasks();
-    } catch (err) {
-      setError('Erreur lors de la suppression');
-    }
-  };
+  if (loading) return <div>Loading tasks...</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
     <div className="task-list">
-      {error && <div className="error-message">{error}</div>}
-      {tasks.length === 0 ? (
-        <p>Aucune tâche pour le moment</p>
-      ) : (
-        <ul>
-          {tasks.map(task => (
-            <li key={task.id} className="task-item">
-              <div className="task-info">
-                <span className="task-title">{task.title}</span>
-                <span className={task.completed ? 'task-completed' : 'task-pending'}>
-                  {task.completed ? 'Complétée' : 'En attente'}
-                </span>
-              </div>
-              <div className="actions">
-                <button 
-                  onClick={() => handleDelete(task.id)} 
-                  className="btn btn-danger"
-                >
-                  Supprimer
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      {tasks.map(task => (
+        <div key={task.id} className={`task-item ${task.completed ? 'completed' : ''}`}>
+          <input
+            type="checkbox"
+            checked={task.completed}
+            onChange={() => toggleComplete(task)}
+          />
+          <span className="task-title">{task.title}</span>
+          <button 
+            onClick={() => handleDelete(task.id)}
+            className="delete-btn"
+          >
+            Delete
+          </button>
+        </div>
+      ))}
     </div>
   );
-}
+};
+
+export default TaskList;

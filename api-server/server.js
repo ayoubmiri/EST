@@ -4,35 +4,23 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware CORS configuré pour accepter les requêtes depuis Vercel
-const allowedOrigins = [
-  'https://est-one.vercel.app',
-  'http://localhost:3000'
-];
-
+// Configuration CORS pour Vercel + localhost
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: [
+    'https://est-one.vercel.app',
+    'http://localhost:3000'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 
-// Pré-requêtes OPTIONS
-app.options('*', cors());
-
-// Middleware pour parser le JSON
 app.use(express.json());
 
-// Base de données simulée
+// Base de données en mémoire
 let tasks = [
-  { id: 1, title: 'Apprendre Express', completed: false },
-  { id: 2, title: 'Déployer sur Railway', completed: false }
+  { id: 1, title: 'Configurer le backend', completed: true },
+  { id: 2, title: 'Développer le frontend', completed: false }
 ];
 
 // Routes API
@@ -50,18 +38,37 @@ app.post('/api/tasks', (req, res) => {
   res.status(201).json(newTask);
 });
 
-// Route de santé
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date() });
+app.put('/api/tasks/:id', (req, res) => {
+  const taskId = parseInt(req.params.id);
+  const taskIndex = tasks.findIndex(t => t.id === taskId);
+  
+  if (taskIndex === -1) return res.status(404).json({ error: 'Task not found' });
+  
+  tasks[taskIndex] = { 
+    ...tasks[taskIndex], 
+    ...req.body,
+    id: taskId // Préserve l'ID original
+  };
+  
+  res.json(tasks[taskIndex]);
 });
 
-// Gestion des erreurs
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something broke!' });
+app.delete('/api/tasks/:id', (req, res) => {
+  const taskId = parseInt(req.params.id);
+  tasks = tasks.filter(t => t.id !== taskId);
+  res.status(204).send();
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    backend: 'supportive-enjoyment-production.up.railway.app',
+    timestamp: new Date() 
+  });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`Backend running on port ${PORT}`);
+  console.log(`API URL: https://supportive-enjoyment-production.up.railway.app`);
 });
