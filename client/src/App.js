@@ -3,81 +3,81 @@ import { taskService } from './services/api';
 import './App.css';
 
 function App() {
-  const [tasks, setTasks] = useState([]);
-  const [newTask, setNewTask] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [editText, setEditText] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [tâches, setTâches] = useState([]);
+  const [nouvelleTâche, setNouvelleTâche] = useState('');
+  const [éditionId, setÉditionId] = useState(null);
+  const [texteÉdition, setTexteÉdition] = useState('');
+  const [chargement, setChargement] = useState(true);
+  const [erreur, setErreur] = useState('');
 
   useEffect(() => {
-    const fetchTasks = async () => {
+    const chargerTâches = async () => {
       try {
-        const data = await taskService.getAllTasks();
-        setTasks(data);
+        const données = await taskService.getAllTasks();
+        setTâches(données);
       } catch (err) {
-        setError('Failed to load tasks. Please refresh the page.');
+        setErreur('Échec du chargement des tâches. Veuillez rafraîchir la page.');
         console.error(err);
       } finally {
-        setLoading(false);
+        setChargement(false);
       }
     };
     
-    fetchTasks();
+    chargerTâches();
   }, []);
 
-  const addTask = async () => {
-    if (!newTask.trim()) return;
+  const ajouterTâche = async () => {
+    if (!nouvelleTâche.trim()) return;
     
     try {
-      const task = await taskService.createTask({ title: newTask });
-      setTasks([...tasks, task]);
-      setNewTask('');
-      setError('');
+      const tâche = await taskService.createTask({ title: nouvelleTâche });
+      setTâches([...tâches, tâche]);
+      setNouvelleTâche('');
+      setErreur('');
     } catch (err) {
-      setError('Failed to add task. Please try again.');
+      setErreur('Échec de l\'ajout. Veuillez réessayer.');
       console.error(err);
     }
   };
 
-  const toggleComplete = async (task) => {
+  const basculerTerminée = async (tâche) => {
     try {
-      const updatedTask = await taskService.updateTask(task.id, {
-        ...task,
-        completed: !task.completed
+      const tâcheMiseÀJour = await taskService.updateTask(tâche.id, {
+        ...tâche,
+        completed: !tâche.completed
       });
-      setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
+      setTâches(tâches.map(t => t.id === tâche.id ? tâcheMiseÀJour : t));
     } catch (err) {
-      setError('Failed to update task status.');
+      setErreur('Échec de la mise à jour.');
       console.error(err);
     }
   };
 
-  const startEditing = (task) => {
-    setEditingId(task.id);
-    setEditText(task.title);
+  const démarrerÉdition = (tâche) => {
+    setÉditionId(tâche.id);
+    setTexteÉdition(tâche.title);
   };
 
-  const saveEdit = async (id) => {
+  const sauvegarderÉdition = async (id) => {
     try {
-      const updatedTask = await taskService.updateTask(id, {
-        title: editText,
-        completed: tasks.find(t => t.id === id).completed
+      const tâcheMiseÀJour = await taskService.updateTask(id, {
+        title: texteÉdition,
+        completed: tâches.find(t => t.id === id).completed
       });
-      setTasks(tasks.map(t => t.id === id ? updatedTask : t));
-      setEditingId(null);
+      setTâches(tâches.map(t => t.id === id ? tâcheMiseÀJour : t));
+      setÉditionId(null);
     } catch (err) {
-      setError('Failed to update task.');
+      setErreur('Échec de la mise à jour.');
       console.error(err);
     }
   };
 
-  const deleteTask = async (id) => {
+  const supprimerTâche = async (id) => {
     try {
       await taskService.deleteTask(id);
-      setTasks(tasks.filter(task => task.id !== id));
+      setTâches(tâches.filter(tâche => tâche.id !== id));
     } catch (err) {
-      setError('Failed to delete task.');
+      setErreur('Échec de la suppression.');
       console.error(err);
     }
   };
@@ -85,55 +85,55 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>Task Manager Pro</h1>
-        <p>Organize your work efficiently</p>
+        <h1>Gestionnaire de Tâches</h1>
+        <p>Organisez votre travail efficacement</p>
       </header>
 
-      {error && <div className="error-message">{error}</div>}
+      {erreur && <div className="error-message">{erreur}</div>}
 
       <div className="task-form">
         <input
           type="text"
           className="task-input"
-          value={newTask}
-          onChange={(e) => setNewTask(e.target.value)}
-          placeholder="Enter a new task..."
-          onKeyPress={(e) => e.key === 'Enter' && addTask()}
+          value={nouvelleTâche}
+          onChange={(e) => setNouvelleTâche(e.target.value)}
+          placeholder="Saisir une nouvelle tâche..."
+          onKeyPress={(e) => e.key === 'Enter' && ajouterTâche()}
         />
-        <button className="add-btn" onClick={addTask}>
-          Add Task
+        <button className="add-btn" onClick={ajouterTâche}>
+          Ajouter
         </button>
       </div>
 
-      {loading ? (
+      {chargement ? (
         <div className="loader">
           <div className="spinner"></div>
         </div>
       ) : (
         <ul className="task-list">
-          {tasks.map(task => (
-            <li key={task.id} className={`task-item ${task.completed ? 'completed' : ''}`}>
+          {tâches.map(tâche => (
+            <li key={tâche.id} className={`task-item ${tâche.completed ? 'completed' : ''}`}>
               <input
                 type="checkbox"
                 className="task-checkbox"
-                checked={task.completed}
-                onChange={() => toggleComplete(task)}
+                checked={tâche.completed}
+                onChange={() => basculerTerminée(tâche)}
               />
               
               <div className="task-content">
-                {editingId === task.id ? (
+                {éditionId === tâche.id ? (
                   <input
                     type="text"
                     className="edit-input"
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onBlur={() => saveEdit(task.id)}
-                    onKeyPress={(e) => e.key === 'Enter' && saveEdit(task.id)}
+                    value={texteÉdition}
+                    onChange={(e) => setTexteÉdition(e.target.value)}
+                    onBlur={() => sauvegarderÉdition(tâche.id)}
+                    onKeyPress={(e) => e.key === 'Enter' && sauvegarderÉdition(tâche.id)}
                     autoFocus
                   />
                 ) : (
-                  <span className="task-title" onDoubleClick={() => startEditing(task)}>
-                    {task.title}
+                  <span className="task-title" onDoubleClick={() => démarrerÉdition(tâche)}>
+                    {tâche.title}
                   </span>
                 )}
               </div>
@@ -141,20 +141,27 @@ function App() {
               <div className="task-actions">
                 <button 
                   className="action-btn edit-btn"
-                  onClick={() => editingId === task.id ? saveEdit(task.id) : startEditing(task)}
+                  onClick={() => éditionId === tâche.id ? sauvegarderÉdition(tâche.id) : démarrerÉdition(tâche)}
                 >
-                  {editingId === task.id ? 'Save' : 'Edit'}
+                  {éditionId === tâche.id ? 'Valider' : 'Modifier'}
                 </button>
                 <button 
                   className="action-btn delete-btn"
-                  onClick={() => deleteTask(task.id)}
+                  onClick={() => supprimerTâche(tâche.id)}
                 >
-                  Delete
+                  Supprimer
                 </button>
               </div>
             </li>
           ))}
         </ul>
+      )}
+
+      {!chargement && tâches.length === 0 && (
+        <div className="empty-state">
+          <p>Aucune tâche pour le moment</p>
+          <small>Commencez par ajouter votre première tâche</small>
+        </div>
       )}
     </div>
   );
