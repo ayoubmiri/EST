@@ -1,8 +1,7 @@
 import axios from 'axios';
 
 // Configuration optimisée pour Railway
-const API_URL = process.env.REACT_APP_API_URL || 'https://supportive-enjoyment-production.up.railway.app';
-
+const API_URL = process.env.REACT_APP_API_URL || 'https://supportive-enjoyment-production.up.railway.app/api';
 const apiClient = axios.create({
   baseURL: API_URL,
   headers: { 
