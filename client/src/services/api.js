@@ -1,25 +1,25 @@
 import axios from 'axios';
 
-const API_URL = 'https://supportive-enjoyment-production.up.railway.app/api';
+const API_BASE_URL = 'https://supportive-enjoyment-production.up.railway.app/api';
 
 const api = axios.create({
-  baseURL: API_URL,
-  timeout: 10000,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 10000
 });
 
-// Intercepteur pour le logging
+// Intercepteurs pour le logging
 api.interceptors.request.use(config => {
-  console.log(`Envoi requête à: ${config.url}`);
+  console.log(`Request to: ${config.url}`);
   return config;
 });
 
 api.interceptors.response.use(
   response => response,
   error => {
-    console.error('Erreur API:', {
+    console.error('API Error:', {
       status: error.response?.status,
       message: error.message,
       url: error.config?.url
@@ -29,12 +29,12 @@ api.interceptors.response.use(
 );
 
 export const taskService = {
-  getAllTasks: async () => {
-    const response = await api.get('/tasks');
-    return response.data;
+  getAllTasks: async () => (await api.get('/tasks')).data,
+  createTask: async (task) => (await api.post('/tasks', task)).data,
+  updateTask: async (id, task) => (await api.put(`/tasks/${id}`, task)).data,
+  deleteTask: async (id) => {
+    await api.delete(`/tasks/${id}`);
+    return id;
   },
-  createTask: async (task) => {
-    const response = await api.post('/tasks', task);
-    return response.data;
-  }
+  checkHealth: async () => (await api.get('/health')).data
 };
