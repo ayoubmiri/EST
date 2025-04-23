@@ -1,121 +1,161 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { taskService } from './services/api';
 import './App.css';
-
-const API_URL = process.env.REACT_APP_API_URL || 'https://supportive-enjoyment-production.up.railway.app/api';
 
 function App() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
-  const [editingTask, setEditingTask] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchTasks = async () => {
-    try {
-      const { data } = await axios.get(`${API_URL}/tasks`);
-      setTasks(data);
-      setError('');
-    } catch (err) {
-      setError('Failed to load tasks');
-      console.error('API Error:', err.response?.data || err.message);
-    }
-  };
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const data = await taskService.getAllTasks();
+        setTasks(data);
+      } catch (err) {
+        setError('Failed to load tasks. Please refresh the page.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchTasks();
+  }, []);
 
   const addTask = async () => {
     if (!newTask.trim()) return;
     
     try {
-      const { data } = await axios.post(`${API_URL}/tasks`, { title: newTask });
-      setTasks([...tasks, data]);
+      const task = await taskService.createTask({ title: newTask });
+      setTasks([...tasks, task]);
       setNewTask('');
       setError('');
     } catch (err) {
-      setError('Failed to save task');
-      console.error('API Error:', err.response?.data || err.message);
+      setError('Failed to add task. Please try again.');
+      console.error(err);
     }
   };
 
-  const updateTask = async (task) => {
+  const toggleComplete = async (task) => {
     try {
-      const { data } = await axios.put(`${API_URL}/tasks/${task.id}`, task);
-      setTasks(tasks.map(t => t.id === task.id ? data : t));
-      setEditingTask(null);
-      setError('');
+      const updatedTask = await taskService.updateTask(task.id, {
+        ...task,
+        completed: !task.completed
+      });
+      setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
     } catch (err) {
-      setError('Failed to update task');
-      console.error('API Error:', err.response?.data || err.message);
+      setError('Failed to update task status.');
+      console.error(err);
+    }
+  };
+
+  const startEditing = (task) => {
+    setEditingId(task.id);
+    setEditText(task.title);
+  };
+
+  const saveEdit = async (id) => {
+    try {
+      const updatedTask = await taskService.updateTask(id, {
+        title: editText,
+        completed: tasks.find(t => t.id === id).completed
+      });
+      setTasks(tasks.map(t => t.id === id ? updatedTask : t));
+      setEditingId(null);
+    } catch (err) {
+      setError('Failed to update task.');
+      console.error(err);
     }
   };
 
   const deleteTask = async (id) => {
     try {
-      await axios.delete(`${API_URL}/tasks/${id}`);
+      await taskService.deleteTask(id);
       setTasks(tasks.filter(task => task.id !== id));
-      setError('');
     } catch (err) {
-      setError('Failed to delete task');
-      console.error('API Error:', err.response?.data || err.message);
+      setError('Failed to delete task.');
+      console.error(err);
     }
   };
 
-  const toggleComplete = async (task) => {
-    await updateTask({ ...task, completed: !task.completed });
-  };
-
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
   return (
-    <div className="app">
-      <h1>Task Manager</h1>
-      
-      {error && <div className="error">{error}</div>}
+    <div className="app-container">
+      <header className="header">
+        <h1>Task Manager Pro</h1>
+        <p>Organize your work efficiently</p>
+      </header>
+
+      {error && <div className="error-message">{error}</div>}
 
       <div className="task-form">
         <input
           type="text"
+          className="task-input"
           value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
-          placeholder="Enter new task"
+          placeholder="Enter a new task..."
           onKeyPress={(e) => e.key === 'Enter' && addTask()}
         />
-        <button onClick={addTask}>
-          {editingTask ? 'Update Task' : 'Add Task'}
+        <button className="add-btn" onClick={addTask}>
+          Add Task
         </button>
       </div>
 
-      <ul className="task-list">
-        {tasks.map(task => (
-          <li key={task.id} className={task.completed ? 'completed' : ''}>
-            <div className="task-content">
+      {loading ? (
+        <div className="loader">
+          <div className="spinner"></div>
+        </div>
+      ) : (
+        <ul className="task-list">
+          {tasks.map(task => (
+            <li key={task.id} className={`task-item ${task.completed ? 'completed' : ''}`}>
               <input
                 type="checkbox"
+                className="task-checkbox"
                 checked={task.completed}
                 onChange={() => toggleComplete(task)}
               />
-              {editingTask?.id === task.id ? (
-                <input
-                  type="text"
-                  value={editingTask.title}
-                  onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
-                  onBlur={() => updateTask(editingTask)}
-                  onKeyPress={(e) => e.key === 'Enter' && updateTask(editingTask)}
-                  autoFocus
-                />
-              ) : (
-                <span onDoubleClick={() => setEditingTask(task)}>
-                  {task.title}
-                </span>
-              )}
-            </div>
-            <div className="task-actions">
-              <button onClick={() => setEditingTask(task)}>Edit</button>
-              <button onClick={() => deleteTask(task.id)}>Delete</button>
-            </div>
-          </li>
-        ))}
-      </ul>
+              
+              <div className="task-content">
+                {editingId === task.id ? (
+                  <input
+                    type="text"
+                    className="edit-input"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onBlur={() => saveEdit(task.id)}
+                    onKeyPress={(e) => e.key === 'Enter' && saveEdit(task.id)}
+                    autoFocus
+                  />
+                ) : (
+                  <span className="task-title" onDoubleClick={() => startEditing(task)}>
+                    {task.title}
+                  </span>
+                )}
+              </div>
+
+              <div className="task-actions">
+                <button 
+                  className="action-btn edit-btn"
+                  onClick={() => editingId === task.id ? saveEdit(task.id) : startEditing(task)}
+                >
+                  {editingId === task.id ? 'Save' : 'Edit'}
+                </button>
+                <button 
+                  className="action-btn delete-btn"
+                  onClick={() => deleteTask(task.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
